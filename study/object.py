@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import gdb
 
 BLOCK_ELEMENTS = 128
@@ -11,8 +12,9 @@ g_query_block_list = []           # 全局 query_block 的 list，里面的元�
 g_query_term_list = []            # 全局 query_term 的 list，里面的元素是指针, 只存放 ['Query_term_except','Query_term_intersect','Query_term_unary','Query_term_union'] 这4种类型
 g_table_ref_list = []             # 全局 Table_ref 的 list, 里面的元素是指针
 
-g_line = []
+g_line = []                       # 遍历对象时，如果两个对象之间有连线，则把连线信息插入这个列表。里面的元素时字符串
 g_error = []
+
 
 # 把 MySQL 源码中的 List 转换为 python 中的 list
 # @list List的指针或者值
@@ -135,6 +137,10 @@ def display_Query_block(block):
     print(f"    leaf_tables => {block['leaf_tables']}")
     print(f"    m_table_nest => {block['m_table_nest'].address}")
     print(f"}}")
+
+    print(f"note right of Query_block_{str(block.address)}")
+    gdb.execute('call '):
+    print(f"end note")
 
     
     if (block['m_table_list'].address != 0x0):

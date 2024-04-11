@@ -14,7 +14,7 @@ TAGS_sorted_by_file
 [._]sw[a-p]
 
 # Configuration files for Visual Studio Code
-.vscode/
+# .vscode/
 
 build/
 datatool/
