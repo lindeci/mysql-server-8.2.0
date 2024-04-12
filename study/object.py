@@ -288,23 +288,54 @@ def print_class():
             )
 
     print("class Table_ref { \n"
-            "    + SQL_I_List<Table_ref> m_table_list \n"
-            "    + Table_ref *leaf_tables \n"
-            "    + Item *select_limit \n"
-            "    + Item *offset_limit \n"
+            "    + NESTED_JOIN *nested_join \n"
+            "    + const char *db \n"
+            "    + const char *table_name \n"
+            "    + const char *alias \n"
+            "    + List<String> *partition_names \n"
+            "    + index_hints \n"
+LEX *view
+Query_expression *derived
+ST_SCHEMA_TABLE *schema_table
+enum_view_algorithm effective_algorithm
+Field_translator *field_translation
+Table_ref *natural_join
+List<String> *join_using_fields
+
             "} \n"
             "note of Table_ref \n"
-            "    Query_block 中所有的 Table_ref\n"
-            "end note \n"
-            "note right of Query_block::leaf_tables \n"
-            "    Query_block 结果逻辑优化后的所有 Table_ref，通过 next_leaf 遍历\n"
-            "end note \n"
-            "note right of Query_block::select_limit \n"
-            "    SQL 中的 limit 值\n"
-            "end note \n"
-            "note right of Query_block::offset_limit \n"
-            "    SQL 中的 offset 值\n"
-            "end note \n"
+            "  Table reference in the FROM clause.                                        \n"
+            "                                                                             \n"
+            "  These table references can be of several types that correspond to          \n"
+            "  different SQL elements. Below we list all types of TABLE_LISTs with        \n"
+            "  the necessary conditions to determine when a Table_ref instance            \n"
+            "  belongs to a certain type.                                                 \n"
+            "                                                                             \n"
+            "  1) table (Table_ref::view == NULL)                                         \n"
+            "     - base table                                                            \n"
+            "       (Table_ref::derived == NULL)                                          \n"
+            "     - subquery - Table_ref::table is a temp table                           \n"
+            "       (Table_ref::derived != NULL)                                          \n"
+            "     - information schema table                                              \n"
+            "       (Table_ref::schema_table != NULL)                                     \n"
+            "       NOTICE: for schema tables Table_ref::field_translation may be != NULL \n"
+            "  2) view (Table_ref::view != NULL)                                          \n"
+            "     - merge    (Table_ref::effective_algorithm == VIEW_ALGORITHM_MERGE)     \n"
+            "           also (Table_ref::field_translation != NULL)                       \n"
+            "     - temptable(Table_ref::effective_algorithm == VIEW_ALGORITHM_TEMPTABLE) \n"
+            "           also (Table_ref::field_translation == NULL)                       \n"
+            "  3) nested table reference (Table_ref::nested_join != NULL)                 \n"
+            "     - table sequence - e.g. (t1, t2, t3)                                    \n"
+            "       TODO: how to distinguish from a JOIN?                                 \n"
+            "     - general JOIN                                                          \n"
+            "       TODO: how to distinguish from a table sequence?                       \n"
+            "     - NATURAL JOIN                                                          \n"
+            "       (Table_ref::natural_join != NULL)                                     \n"
+            "       - JOIN ... USING                                                      \n"
+            "         (Table_ref::join_using_fields != NULL)                              \n"
+            "     - semi-join                                                             \n"
+            "       ;                                                                     \n"
+            "end note                                                                     \n"
             )
 
     print("Query_block -up-|> Query_term")
