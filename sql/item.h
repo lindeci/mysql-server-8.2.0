@@ -2683,6 +2683,14 @@ class Item : public Parse_tree_node {
 
     @todo Pass THD to compile() function, thus no need to use current_thd.
   */
+  // 执行Item树的通用“编译”，即通过向其添加零个或多个Item对象来转换Item树
+  /*
+    即进行自顶向下的分析，而转换则是自底向上完成的。如果未应用任何转换，则返回未更改的项。
+    转换错误通过返回NULL指针表示。请注意，分析器函数不应导致错误。
+
+    该函数应在查询执行的优化阶段使用。所有新分配都使用THD::change_item_tree()记录下来，
+    以便在执行后可以回滚。
+  */
   virtual Item *compile(Item_analyzer analyzer, uchar **arg_p,
                         Item_transformer transformer, uchar *arg_t) {
     if ((this->*analyzer)(arg_p)) return ((this->*transformer)(arg_t));

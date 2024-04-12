@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import gdb
+import sqlparse
 
 BLOCK_ELEMENTS = 128
 
@@ -111,6 +112,16 @@ def display_Query_expression(expr):
     print(f"    executed => {expr['executed']}")
     print(f"}}")
     
+    print(f"note right of Query_expression_{str(expr.address)}")
+    gdb.set_convenience_variable(g_gdb_conv,expr.address)
+    gdb.execute('call thd->gdb_str.set("", 0, system_charset_info)')
+    gdb.execute('call $g_gdb_conv->print(thd, &(thd->gdb_str), QT_ORDINARY)')
+    gdb_str = gdb.parse_and_eval('thd->gdb_str->m_ptr').string()
+    formatted_sql = sqlparse.format(gdb_str, reindent=True, keyword_case='upper')
+    print(f"{formatted_sql}")
+    print(f"end note")
+    print()
+
 # 打印 Query_block
 # @block Query_block的指针或者对象
 def display_Query_block(block):
@@ -139,8 +150,14 @@ def display_Query_block(block):
     print(f"}}")
 
     print(f"note right of Query_block_{str(block.address)}")
-    gdb.execute('call '):
+    gdb.set_convenience_variable(g_gdb_conv,block.address)
+    gdb.execute('call thd->gdb_str.set("", 0, system_charset_info)')
+    gdb.execute('call $g_gdb_conv->print(thd, &(thd->gdb_str), QT_ORDINARY)')
+    gdb_str = gdb.parse_and_eval('thd->gdb_str->m_ptr').string()
+    formatted_sql = sqlparse.format(gdb_str, reindent=True, keyword_case='upper')
+    print(f"{formatted_sql}")
     print(f"end note")
+    print()
 
     
     if (block['m_table_list'].address != 0x0):
@@ -194,6 +211,16 @@ def display_Table_ref(table_ref):
     print(f"    next_local => {table_ref['next_local']}")
     print(f"    next_leaf => {table_ref['next_leaf']}")
     print(f"}}")
+
+    print(f"note right of Table_ref_{str(table_ref.address)}")
+    gdb.set_convenience_variable(g_gdb_conv,table_ref.address)
+    gdb.execute('call thd->gdb_str.set("", 0, system_charset_info)')
+    gdb.execute('call $g_gdb_conv->print(thd, &(thd->gdb_str), QT_ORDINARY)')
+    gdb_str = gdb.parse_and_eval('thd->gdb_str->m_ptr').string()
+    #formatted_sql = sqlparse.format(gdb_str, reindent=True, keyword_case='upper')
+    print(f"{gdb_str}")
+    print(f"end note")
+    print()
 
 #def display_where_cond(item):
 
@@ -258,6 +285,26 @@ def print_class():
 
     print("class Query_term_union { \n"
             "} \n"
+            )
+
+    print("class Table_ref { \n"
+            "    + SQL_I_List<Table_ref> m_table_list \n"
+            "    + Table_ref *leaf_tables \n"
+            "    + Item *select_limit \n"
+            "    + Item *offset_limit \n"
+            "} \n"
+            "note of Table_ref \n"
+            "    Query_block 中所有的 Table_ref\n"
+            "end note \n"
+            "note right of Query_block::leaf_tables \n"
+            "    Query_block 结果逻辑优化后的所有 Table_ref，通过 next_leaf 遍历\n"
+            "end note \n"
+            "note right of Query_block::select_limit \n"
+            "    SQL 中的 limit 值\n"
+            "end note \n"
+            "note right of Query_block::offset_limit \n"
+            "    SQL 中的 offset 值\n"
+            "end note \n"
             )
 
     print("Query_block -up-|> Query_term")
