@@ -9,7 +9,7 @@
             "name": "(gdb) Launch",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/runtime_output_directory/mysqld-debug",
+            "program": "${workspaceFolder}/build/runtime_output_directory/mysqld",
             "args": [
                 "--user=mysql",
                 "--datadir=${workspaceFolder}/build/runtime_output_directory/../../data",
@@ -21,7 +21,7 @@
             "environment": [],
             "externalConsole": false,
             "MIMode": "gdb",
-            "miDebuggerPath": "/data/ldc_docker/gdb-14.2/gdb/gdb",
+            //"miDebuggerPath": "/data/ldc_docker/gdb-14.2/gdb/gdb",
             "setupCommands": [
                 {
                     "description": "Enable pretty-printing for gdb",
