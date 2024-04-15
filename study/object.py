@@ -1,4 +1,9 @@
 # -*- coding: utf-8 -*-
+
+"""
+整体流程：先遍历对象的指针，放在全局的LIST中，同时把连线防盗 g_line 中，
+然后先打印对象，再打印连线
+"""
 import gdb
 import sqlparse
 
@@ -8,12 +13,15 @@ g_space = 3          # 缩进空间大小
 g_bin_len = 16       # 打印二级制的长度
 g_gdb_conv = 'g_gdb_conv'    # gdb 时设置的临时变量
 
-g_query_expression_list = []      # 全局 query_expression 的 list，里面的元素是指针
-g_query_block_list = []           # 全局 query_block 的 list，里面的元素是指针
-g_query_term_list = []            # 全局 query_term 的 list，里面的元素是指针, 只存放 ['Query_term_except','Query_term_intersect','Query_term_unary','Query_term_union'] 这4种类型
-g_table_ref_list = []             # 全局 Table_ref 的 list, 里面的元素是指针
-
-g_line = []                       # 遍历对象时，如果两个对象之间有连线，则把连线信息插入这个列表。里面的元素时字符串
+g_query_expression_list = []            # 全局 query_expression 的 list，里面的元素是指针
+g_query_block_list = []                 # 全局 query_block 的 list，里面的元素是指针
+g_query_term_list = []                  # 全局 query_term 的 list，里面的元素是指针, 只存放 ['Query_term_except','Query_term_intersect','Query_term_unary','Query_term_union'] 这4种类型
+g_table_ref_list = []                   # 全局 Table_ref 的 list, 里面的元素是指针
+g_mem_root_deque__Table_ref__list = []  # 全局 mem_root_deque<Table_ref*> 的 list, 面的元素是指针
+g_natural_join_column_list = []         # 全局 Natural_join_column 的 list，里面的元素是指针
+g_list__natural_join_column__list = []  # 全局 List<Natural_join_column> *join_columns 的 list，里面的元素是指针
+g_Item_field_list = []
+g_line = []                             # 遍历对象时，如果两个对象之间有连线，则把连线信息插入这个列表。里面的元素时字符串
 g_error = []
 
 
@@ -112,14 +120,14 @@ def display_Query_expression(expr):
     print(f"    executed => {expr['executed']}")
     print(f"}}")
     
-    print(f"note right of Query_expression_{str(expr.address)}")
-    gdb.set_convenience_variable(g_gdb_conv,expr.address)
-    gdb.execute('call thd->gdb_str.set("", 0, system_charset_info)')
-    gdb.execute('call $g_gdb_conv->print(thd, &(thd->gdb_str), QT_ORDINARY)')
-    gdb_str = gdb.parse_and_eval('thd->gdb_str->m_ptr').string()
-    formatted_sql = sqlparse.format(gdb_str, reindent=True, keyword_case='upper')
-    print(f"{formatted_sql}")
-    print(f"end note")
+#    print(f"note right of Query_expression_{str(expr.address)}")
+#    gdb.set_convenience_variable(g_gdb_conv,expr.address)
+#    gdb.execute('call thd->gdb_str.set("", 0, system_charset_info)')
+#    gdb.execute('call $g_gdb_conv->print(thd, &(thd->gdb_str), QT_ORDINARY)')
+#    gdb_str = gdb.parse_and_eval('thd->gdb_str->m_ptr').string()
+#    formatted_sql = sqlparse.format(gdb_str, reindent=True, keyword_case='upper')
+#    print(f"{formatted_sql}")
+#    print(f"end note")
     print()
 
 # 打印 Query_block
@@ -163,7 +171,7 @@ def display_Query_block(block):
     if (block['m_table_list'].address != 0x0):
         print(f"map SQL_I_List__Table_ref_{block['m_table_list'].address} {{")
         for i in SQL_I_List_to_list(block['m_table_list'], 'next_local'):
-            print(f"    {i.address} => {i.dynamic_type}")
+            print(f"    {i} => {i.dynamic_type}")
         print(f"}}")
 
 # 打印 Query_term，包含子类的 Query_term_except、Query_term_intersect、Query_term_unary、Query_term_union，不包含 Query_block
@@ -205,11 +213,39 @@ def display_Table_ref(table_ref):
     if table_ref.type.code == gdb.TYPE_CODE_PTR:
         table_ref = table_ref.dereference()
     print(f"map Table_ref_{table_ref.address} {{")
-    print(f"    db => {table_ref['db'].string()}")
-    print(f"    table_name => {table_ref['table_name'].string()}")
+    if table_ref['db'] != 0x0:
+        print(f"    db => {table_ref['db'].string()}")
+    if table_ref['table_name'] != 0x0:
+        print(f"    table_name => {table_ref['table_name'].string()}")
+    if table_ref['alias'] != 0x0:
+        print(f"    alias => {table_ref['alias'].string()}")
     print(f"    m_tableno => {table_ref['m_tableno']}")
     print(f"    next_local => {table_ref['next_local']}")
     print(f"    next_leaf => {table_ref['next_leaf']}")
+    print(f"    partition_names => {table_ref['partition_names']}")
+    print(f"    index_hints => {table_ref['index_hints']}")
+    print(f"    view => {table_ref['view']}")
+    print(f"    derived => {table_ref['derived']}")
+    print(f"    schema_table => {table_ref['schema_table']}")
+    print(f"    effective_algorithm => {table_ref['effective_algorithm']}")
+    print(f"    field_translation => {table_ref['field_translation']}")
+    print(f"    natural_join => {table_ref['natural_join']}")
+    print(f"    join_using_fields => {table_ref['join_using_fields']}")
+    print(f"    m_join_cond => {table_ref['m_join_cond']}")
+    print(f"    m_is_sj_or_aj_nest => {table_ref['m_is_sj_or_aj_nest']}")
+    print(f"    sj_inner_tables => {table_ref['sj_inner_tables']}")
+    print(f"    is_natural_join => {table_ref['is_natural_join']}")
+    print(f"    join_using_fields => {table_ref['join_using_fields']}")
+    print(f"    join_columns => {table_ref['join_columns']}")
+    print(f"    is_join_columns_complete => {table_ref['is_join_columns_complete']}")
+    print(f"    join_order_swapped => {table_ref['join_order_swapped']}")
+    print(f"    straight => {table_ref['straight']}")
+    print(f"    join_cond_dep_tables => {table_ref['join_cond_dep_tables']}")
+    print(f"    nested_join => {table_ref['nested_join']}")
+    print(f"    embedding => {table_ref['embedding']}")
+    print(f"    join_list => {table_ref['join_list']}")
+    print(f"    m_join_cond_optim => {table_ref['m_join_cond_optim']}")
+    print(f"    cond_equal => {table_ref['cond_equal']}")
     print(f"}}")
 
     print(f"note right of Table_ref_{str(table_ref.address)}")
@@ -222,8 +258,49 @@ def display_Table_ref(table_ref):
     print(f"end note")
     print()
 
-#def display_where_cond(item):
 
+# 打印 mem_root_deque__Table_ref
+# @deque mem_root_deque的指针或者对象
+def display_mem_root_deque__Table_ref(deque):
+    if deque.type.code == gdb.TYPE_CODE_PTR:
+        deque = deque.dereference()
+    print(f"map mem_root_deque__Table_ref_{deque.address} {{")
+    for i in mem_root_deque_to_list(deque):
+        print(f"    {i}=> {i.dynamic_type}")
+    print(f"}}")
+
+# List<Natural_join_column> *join_columns; // 连接列列表
+
+def display_list__natural_join_column__list(list):
+    if list.type.code == gdb.TYPE_CODE_PTR:
+        list = list.dereference()
+    print(f"map natural_join_column__list_{list.address} {{")
+    for i in List_to_list(list):
+        print(f"    {i.address} => natural_join_column *")
+    print(f"}}")
+
+def display_g_natural_join_column_list(natural_join_column):
+    if natural_join_column.type.code == gdb.TYPE_CODE_PTR:
+        natural_join_column = natural_join_column.dereference()
+    print(f"map natural_join_column_{natural_join_column.address} {{")
+    print(f"    view_field => {natural_join_column['view_field']}")
+    print(f"    table_field => {natural_join_column['table_field']}")
+    print(f"    table_ref => {natural_join_column['table_ref']}")
+    print(f"    is_common => {natural_join_column['is_common']}")
+    print(f"}}")
+
+def display_Item_field(item):
+    if item.type.code == gdb.TYPE_CODE_PTR:
+        item = item.dereference()
+    print(f"map Item_field_{item.address} {{")
+    print(f"    table_ref => {item['table_ref']}")
+    print(f"    field.field_name => {item['field']['field_name'].string()}")
+    print(f"    field.table_name => {item['field']['table_name'].dereference().string()}")
+    # print(f"    field.orig_db_name => {item['field']['orig_db_name'].string()}")
+    print(f"    item_equal => {item['item_equal']}")
+    print(f"    item_equal_all_join_nests => {item['item_equal_all_join_nests']}")
+    print(f"    field_index => {item['field_index']}")
+    print(f"}}")
 
 def print_class():
     print("class Query_term { \n"
@@ -287,23 +364,39 @@ def print_class():
             "} \n"
             )
 
+
+
     print("class Table_ref { \n"
-            "    + NESTED_JOIN *nested_join \n"
             "    + const char *db \n"
             "    + const char *table_name \n"
             "    + const char *alias \n"
             "    + List<String> *partition_names \n"
-            "    + index_hints \n"
-LEX *view
-Query_expression *derived
-ST_SCHEMA_TABLE *schema_table
-enum_view_algorithm effective_algorithm
-Field_translator *field_translation
-Table_ref *natural_join
-List<String> *join_using_fields
+            "    + List<Index_hint> *index_hints \n"
+            "    + LEX *view                                 \n"                            
+            "    + Query_expression *derived  \n"
+            "    + ST_SCHEMA_TABLE *schema_table  \n"
+            "    + enum_view_algorithm effective_algorithm  \n"
+            "    + Field_translator *field_translation  \n"
+            "    + Table_ref *natural_join  \n"  
+            "    + Item *m_join_cond            \n"
+            "    + m_is_sj_or_aj_nest            \n"
+            "    + table_map sj_inner_tables            \n"
+            "    + Lbool is_natural_join            \n"
+            "    + List<String> *join_using_fields            \n"
+            "    + List<Natural_join_column> *join_columns            \n"
+            "    + bool is_join_columns_complete            \n"
+            "    + bool outer_join            \n"
+            "    + bool join_order_swapped            \n"
+            "    + bool straight            \n"
+            "    + table_map join_cond_dep_tables            \n"
+            "    + NESTED_JOIN *nested_join \n"
+            "    + Table_ref *embedding            \n"
+            "    + mem_root_deque<Table_ref*> *join_list            \n"
+            "    + Item *m_join_cond_optim            \n"
+            "    + COND_EQUAL *cond_equal            \n"
 
             "} \n"
-            "note of Table_ref \n"
+            "note right of Table_ref \n"
             "  Table reference in the FROM clause.                                        \n"
             "                                                                             \n"
             "  These table references can be of several types that correspond to          \n"
@@ -336,7 +429,75 @@ List<String> *join_using_fields
             "     - semi-join                                                             \n"
             "       ;                                                                     \n"
             "end note                                                                     \n"
-            )
+
+            "note right of Table_ref::m_join_cond \n"
+            "    连接条件\n"
+            "end note                                                                     \n"
+
+            "note right of Table_ref::m_is_sj_or_aj_nest \n"
+            "     是否是 SJ 或 AJ\n"
+            "end note                                                                     \n"
+
+            "note right of Table_ref::sj_inner_tables \n"
+            "    SJ 的内表\n"
+            "end note                                                                     \n"
+
+            "note right of Table_ref::natural_join \n"
+            "    NATURE JOIN 的 Table_ref \n"
+            "end note                                                                     \n"
+
+            "note right of Table_ref::is_natural_join \n"
+            "    是否是 NATURE JOIN\n"
+            "end note                                                                     \n"
+
+            "note right of Table_ref::join_using_fields \n"
+            "    JOIN XXX USING 的字段列表名  \n"
+            "end note                                                                     \n"
+
+            "note right of Table_ref::join_columns \n"
+            "    JOIN 的谓词的字段列表\n"
+            "end note                                                                     \n"
+
+            "note right of Table_ref::is_join_columns_complete \n"
+            "    ... \n"
+            "end note                                                                     \n"
+
+            "note right of Table_ref::outer_join \n"
+            "    是否是 OUTER JOIN \n"
+            "end note                                                                     \n"
+
+            "note right of Table_ref::join_order_swapped \n"
+            "    JOIN ORDER 是否 SWAPPED\n"
+            "end note                                                                     \n"
+
+            "note right of Table_ref::straight \n"
+            "    ... \n"
+            "end note                                                                     \n"
+
+            "note right of Table_ref::join_cond_dep_tables \n"
+            "     连接条件依赖的表 \n"
+            "end note                                                                     \n"
+
+            "note right of Table_ref::nested_join \n"
+            "     ... \n"
+            "end note                                                                     \n"
+
+            "note right of Table_ref::embedding \n"
+            "    ... \n"
+            "end note                                                                     \n"
+
+            "note right of Table_ref::join_list \n"
+            "    ... \n"
+            "end note                                                                     \n"
+
+            "note right of Table_ref::m_join_cond_optim \n"
+            "    优化后的连接条件 \n"
+            "end note                                                                     \n"
+
+            "note right of Table_ref::cond_equal \n"
+            "    ... \n"
+            "end note                                                                     \n"
+    )
 
     print("Query_block -up-|> Query_term")
     print("Query_term_set_op -up-|> Query_term")
@@ -353,6 +514,11 @@ class GDB_expr(gdb.Command):
         del g_query_expression_list[:]
         del g_query_block_list[:]
         del g_query_term_list[:]
+        del g_table_ref_list[:]
+        del g_mem_root_deque__Table_ref__list[:]
+        del g_natural_join_column_list[:]
+        del g_list__natural_join_column__list[:]
+        del g_Item_field_list[:]
         del g_line[:]
         del g_error[:]
 
@@ -371,11 +537,23 @@ class GDB_expr(gdb.Command):
 
         for i in g_table_ref_list:
             display_Table_ref(i)
-        
+
+        for i in g_mem_root_deque__Table_ref__list:
+            display_mem_root_deque__Table_ref(i)
+
+        for i in g_list__natural_join_column__list:
+            display_list__natural_join_column__list(i)
+
+        for i in g_natural_join_column_list:
+            display_g_natural_join_column_list(i)
+
+        for i in g_Item_field_list:
+            display_Item_field(i)
+
         for i in g_line:
             print(str(i))
 
-        print_class()
+        #print_class()
         
         print("@enduml")
 
@@ -415,6 +593,26 @@ class GDB_expr(gdb.Command):
                     g_table_ref_list.append(i)
                     if (i['next_local'] != 0x0):
                         g_line.append(f"Table_ref_{i}::next_local --> Table_ref_{i['next_local']}")
+                    if (i['next_leaf'] != 0x0):
+                        g_line.append(f"Table_ref_{i}::next_leaf --> Table_ref_{i['next_leaf']}")
+                    if (i['join_list'] != 0x0):
+                        g_line.append(f"Table_ref_{i}::join_list --> mem_root_deque__Table_ref_{i['join_list']}")
+                        if i['join_list'] not in g_mem_root_deque__Table_ref__list:
+                            g_mem_root_deque__Table_ref__list.append(i['join_list'])
+                            for j in mem_root_deque_to_list(i['join_list']):
+                                g_line.append(f"mem_root_deque__Table_ref_{i['join_list']} --> Table_ref_{j} : {j}")
+                    if (i['join_columns'] != 0x0):
+                        if i['join_columns'] not in g_list__natural_join_column__list:
+                            g_line.append(f"Table_ref_{i}::join_columns --> natural_join_column__list_{i['join_columns']}")
+                            g_list__natural_join_column__list.append(i['join_columns'])
+                            for j in List_to_list(i['join_columns']):
+                                if j not in g_natural_join_column_list:
+                                    g_natural_join_column_list.append(j.address)
+                                    g_line.append(f"natural_join_column__list_{i['join_columns']} --> natural_join_column_{j.address}")
+                                    if j.address not in g_Item_field_list:
+                                        g_Item_field_list.append(j['table_field'])
+                                        g_line.append(f"natural_join_column_{j.address}::table_field --> Item_field_{j['table_field']}")
+
 
         if (block['leaf_tables'] != 0x0):
             leaf_tables = table_ref_to_list(block['leaf_tables'], 'next_leaf')
