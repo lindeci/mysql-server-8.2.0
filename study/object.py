@@ -124,7 +124,6 @@ def display_Query_expression(expr):
     print(f"    executed => {expr['executed']}")
     print(f"}}")
     
-<<<<<<< HEAD
     print(f"note right of Query_expression_{str(expr.address)}")
     gdb.set_convenience_variable(g_gdb_conv,expr.address)
     gdb.execute('call thd->gdb_str.set("", 0, system_charset_info)')
@@ -133,16 +132,6 @@ def display_Query_expression(expr):
     formatted_sql = sqlparse.format(gdb_str, reindent=True, keyword_case='upper')
     print(f"{formatted_sql}")
     print(f"end note")
-=======
-#    print(f"note right of Query_expression_{str(expr.address)}")
-#    gdb.set_convenience_variable(g_gdb_conv,expr.address)
-#    gdb.execute('call thd->gdb_str.set("", 0, system_charset_info)')
-#    gdb.execute('call $g_gdb_conv->print(thd, &(thd->gdb_str), QT_ORDINARY)')
-#    gdb_str = gdb.parse_and_eval('thd->gdb_str->m_ptr').string()
-#    formatted_sql = sqlparse.format(gdb_str, reindent=True, keyword_case='upper')
-#    print(f"{formatted_sql}")
-#    print(f"end note")
->>>>>>> e746319e95e461087f3eeffd4237b2f4951c1527
     print()
 
 # 打印 Query_block
@@ -299,7 +288,6 @@ def display_Table_ref(table_ref):
         print(f"end note")
     print()
 
-<<<<<<< HEAD
     if table_ref['m_join_cond'] not in [0x0, 0x1]:
         print(f"note right of Table_ref_{str(table_ref.address)}")
         gdb.set_convenience_variable(g_gdb_conv,table_ref['m_join_cond'].cast(table_ref['m_join_cond'].dynamic_type))
@@ -310,8 +298,6 @@ def display_Table_ref(table_ref):
         print(f"m_join_cond:   {formatted_sql}")
         print(f"end note")
     print()
-=======
->>>>>>> e746319e95e461087f3eeffd4237b2f4951c1527
 
 # 打印 mem_root_deque__Table_ref
 # @deque mem_root_deque的指针或者对象
