@@ -1,3 +1,9 @@
+github_
+qq
+pat_11BHGTC7Q0PXbjzMbpJw71_
+qq
+A3yMcdS09qJYBJU4JSWvM995h3wkUrpZEIrnFzTofCgGHN3ZC5SmbsMs3Ei
+
 # mysql 脚本
 ```sql
 启动 MySQL 服务
