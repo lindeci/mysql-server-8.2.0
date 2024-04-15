@@ -124,6 +124,7 @@ def display_Query_expression(expr):
     print(f"    executed => {expr['executed']}")
     print(f"}}")
     
+<<<<<<< HEAD
     print(f"note right of Query_expression_{str(expr.address)}")
     gdb.set_convenience_variable(g_gdb_conv,expr.address)
     gdb.execute('call thd->gdb_str.set("", 0, system_charset_info)')
@@ -132,6 +133,16 @@ def display_Query_expression(expr):
     formatted_sql = sqlparse.format(gdb_str, reindent=True, keyword_case='upper')
     print(f"{formatted_sql}")
     print(f"end note")
+=======
+#    print(f"note right of Query_expression_{str(expr.address)}")
+#    gdb.set_convenience_variable(g_gdb_conv,expr.address)
+#    gdb.execute('call thd->gdb_str.set("", 0, system_charset_info)')
+#    gdb.execute('call $g_gdb_conv->print(thd, &(thd->gdb_str), QT_ORDINARY)')
+#    gdb_str = gdb.parse_and_eval('thd->gdb_str->m_ptr').string()
+#    formatted_sql = sqlparse.format(gdb_str, reindent=True, keyword_case='upper')
+#    print(f"{formatted_sql}")
+#    print(f"end note")
+>>>>>>> e746319e95e461087f3eeffd4237b2f4951c1527
     print()
 
 # 打印 Query_block
@@ -288,6 +299,7 @@ def display_Table_ref(table_ref):
         print(f"end note")
     print()
 
+<<<<<<< HEAD
     if table_ref['m_join_cond'] not in [0x0, 0x1]:
         print(f"note right of Table_ref_{str(table_ref.address)}")
         gdb.set_convenience_variable(g_gdb_conv,table_ref['m_join_cond'].cast(table_ref['m_join_cond'].dynamic_type))
@@ -298,7 +310,51 @@ def display_Table_ref(table_ref):
         print(f"m_join_cond:   {formatted_sql}")
         print(f"end note")
     print()
+=======
+>>>>>>> e746319e95e461087f3eeffd4237b2f4951c1527
 
+# 打印 mem_root_deque__Table_ref
+# @deque mem_root_deque的指针或者对象
+def display_mem_root_deque__Table_ref(deque):
+    if deque.type.code == gdb.TYPE_CODE_PTR:
+        deque = deque.dereference()
+    print(f"map mem_root_deque__Table_ref_{deque.address} {{")
+    for i in mem_root_deque_to_list(deque):
+        print(f"    {i}=> {i.dynamic_type}")
+    print(f"}}")
+
+# List<Natural_join_column> *join_columns; // 连接列列表
+
+def display_list__natural_join_column__list(list):
+    if list.type.code == gdb.TYPE_CODE_PTR:
+        list = list.dereference()
+    print(f"map natural_join_column__list_{list.address} {{")
+    for i in List_to_list(list):
+        print(f"    {i.address} => natural_join_column *")
+    print(f"}}")
+
+def display_g_natural_join_column_list(natural_join_column):
+    if natural_join_column.type.code == gdb.TYPE_CODE_PTR:
+        natural_join_column = natural_join_column.dereference()
+    print(f"map natural_join_column_{natural_join_column.address} {{")
+    print(f"    view_field => {natural_join_column['view_field']}")
+    print(f"    table_field => {natural_join_column['table_field']}")
+    print(f"    table_ref => {natural_join_column['table_ref']}")
+    print(f"    is_common => {natural_join_column['is_common']}")
+    print(f"}}")
+
+def display_Item_field(item):
+    if item.type.code == gdb.TYPE_CODE_PTR:
+        item = item.dereference()
+    print(f"map Item_field_{item.address} {{")
+    print(f"    table_ref => {item['table_ref']}")
+    print(f"    field.field_name => {item['field']['field_name'].string()}")
+    print(f"    field.table_name => {item['field']['table_name'].dereference().string()}")
+    # print(f"    field.orig_db_name => {item['field']['orig_db_name'].string()}")
+    print(f"    item_equal => {item['item_equal']}")
+    print(f"    item_equal_all_join_nests => {item['item_equal_all_join_nests']}")
+    print(f"    field_index => {item['field_index']}")
+    print(f"}}")
 
 # 打印 mem_root_deque__Table_ref
 # @deque mem_root_deque的指针或者对象
