@@ -33,7 +33,9 @@ g_list_mem_root_deque__object = []  # 全局 mem_root_deque<xxx> 的 list, 里�
 g_list_Item = []     # 全局 Item 的 list, 里面的元素是指针
 g_list_SQL_I_List__object = []  # 全局 SQL_I_List<xxx> 的 list, 里面的元素是指针
 g_list_JOIN = []  # 全局 JOIN 的 list, 里面的元素是指针
-
+g_list_JOIN_TAB = []
+g_list_QEP_TAB = []
+g_list_QEP_shared = []
 g_list_line = []                             # 遍历对象时，如果两个对象之间有连线，则把连线信息插入这个列表。里面的元素时字符串
 g_list_object_string = []
 g_list_note = []
@@ -489,44 +491,135 @@ def traverse_JOIN(list, object):
     traverse_Item(g_list_Item, object['having_cond'])
     add_line(g_list_line, f'JOIN_{object.address}::having_cond --> Item_', object['having_cond'], 'having_cond')
 
+    traverse_JOIN_TAB(g_list_JOIN_TAB, object['join_tab'])
+    add_line(g_list_line, f'JOIN_{object.address}::join_tab --> JOIN_TAB_', object['join_tab'], 'join_tab')
+
+    traverse_QEP_TAB(g_list_QEP_TAB, object['qep_tab'])
+    add_line(g_list_line, f'JOIN_{object.address}::qep_tab --> QEP_TAB_', object['qep_tab'], 'qep_tab')
+
+    traverse_COND_EQUAL(g_list_COND_EQUAL, object['cond_equal'])
+    add_line(g_list_line, f'JOIN_{object.address}::cond_equal --> COND_EQUAL_', object['cond_equal'], 'cond_equal')
+
 # 探索 QEP_shared
 # @list 存储 QEP_shared 指针的列表
 # @object QEP_shared 的指针或者对象
 @object_decorator
 def traverse_QEP_shared(list, object):
     display = textwrap.dedent(f'''
-                              map JOIN_{object.address} #header:pink;back:lightblue{{
-                                       query_block => <Query_block* const> {object['query_block']}
-                                       thd => <THD* const> {object['thd']}
-                                       join_tab => <JOIN_TAB*> {object['join_tab']}
-                                       qep_tab => <QEP_TAB*> {object['qep_tab']}                                       
-                                       sort_by_table => <TABLE*> {object['sort_by_table']}
-                                       grouped => <bool> {object['grouped']}
-                                       const_table_map => <table_map> {object['const_table_map']}
-                                       found_const_table_map => <table_map> {object['found_const_table_map']}
-                                       fields => <mem_root_deque<Item*>> {object['fields']}
-                                       tmp_table_param => <Temp_table_param> {object['tmp_table_param'].address}
-                                       lock => <MYSQL_LOCK*> {object['lock']}
-                                       implicit_grouping => <bool> {object['implicit_grouping']}
-                                       select_distinct => <bool> {object['select_distinct']}
-                                       keyuse_array => <Key_use_array> {object['keyuse_array'].address}
-                                       order => <ORDER_with_src> {object['order'].address}
-                                       group_list => <ORDER_with_src> {object['group_list'].address}
-                                       m_windows => <List<Window>> {object['m_windows'].address}
-                                       where_cond => <Item*> {object['where_cond']}
-                                       having_cond => <Item*> {object['having_cond']}
-                                       having_for_explain => <Item*> {object['having_for_explain']}
-                                       tables_list => <Table_ref*> {object['tables_list']}
-                                       current_ref_item_slice => <uint> {object['current_ref_item_slice']}
-                                       with_json_agg => <bool> {object['with_json_agg']}
-                                       rollup_state => <JOIN::RollupState> {object['rollup_state']}
-                                       explain_flags => <Explain_format_flags> {object['explain_flags'].address}
-                                       send_group_parts => <uint> {object['send_group_parts']}
-                                       cond_equal => <COND_EQUAL*> {object['cond_equal']}
+                              map QEP_shared_{object.address} #header:pink;back:lightgreen{{
+                                       m_join => <JOIN *> {object['m_join']}
+                                       m_idx => <plan_idx> {object['m_idx']}
+                                       m_table => <TABLE *> {object['m_table']}
+                                       m_position => <POSITION *> {object['m_position']}
+                                       m_sj_mat_exec => <Semijoin_mat_exec *> {object['m_sj_mat_exec']}
+                                       m_first_sj_inner => <plan_idx> {object['m_first_sj_inner']}
+                                       m_last_sj_inner => <plan_idx> {object['m_last_sj_inner']}
+                                       m_first_inner => <plan_idx> {object['m_first_inner']}
+                                       m_last_inner => <plan_idx> {object['m_last_inner']}
+                                       m_first_upper => <plan_idx> {object['m_first_upper']}
+                                       m_ref => <Index_lookup> {object['m_ref']}
+                                       m_index => <uint> {object['m_index']}
+                                       m_type => <join_type> {object['m_type']}
+                                       m_condition => <Item *> {object['m_condition']}
+                                       m_condition_is_pushed_to_sort => <bool> {object['m_condition_is_pushed_to_sort']}
+                                       m_keys => <Key_map> {object['m_keys']}
+                                       m_records => <ha_rows> {object['m_records']}
+                                       m_range_scan => <AccessPath *> {object['m_range_scan']}
+                                       prefix_tables_map => <table_map> {object['prefix_tables_map']}
+                                       added_tables_map => <table_map> {object['added_tables_map']}
+                                       m_ft_func => <Item_func_match *> {object['m_ft_func']}
+                                       m_skip_records_in_range => <bool> {object['m_skip_records_in_range']}
                               }}
                               ''')
     g_list_object_string.append(display)
 # List<Natural_join_column> *join_columns; // 连接列列表
+
+# 探索 JOIN_TAB
+# @list 存储 JOIN_TAB 指针的列表
+# @object JOIN_TAB 的指针或者对象
+@object_decorator
+def traverse_JOIN_TAB(list, object):
+    display = textwrap.dedent(f'''
+                              map JOIN_TAB_{object.address} #header:pink;back:lightgreen{{
+                                       m_qs => <QEP_shared *> {object['m_qs']}
+                                       table_ref => <Table_ref *> {object['table_ref']}
+                                       m_keyuse => <Key_use *> {object['m_keyuse']}
+                                       m_join_cond_ref => <Item **> {object['m_join_cond_ref']}
+                                       cond_equal => <COND_EQUAL *> {object['cond_equal']}
+                                       worst_seeks => <double> {object['worst_seeks']}
+                                       const_keys => <Key_map> {object['const_keys']}
+                                       checked_keys => <Key_map> {object['checked_keys']}
+                                       skip_scan_keys => <Key_map> {object['skip_scan_keys']}
+                                       needed_reg => <Key_map> {object['needed_reg']}
+                                       quick_order_tested => <Key_map> {object['quick_order_tested']}
+                                       found_records => <ha_rows> {object['found_records']}
+                                       read_time => <double> {object['read_time']}
+                                       dependent => <table_map> {object['dependent']}
+                                       key_dependent => <table_map> {object['key_dependent']}
+                                       used_fieldlength => <uint> {object['used_fieldlength']}
+                                       use_quick => <quick_type> {object['use_quick']}
+                                       m_use_join_cache => <uint> {object['m_use_join_cache']}
+                                       emb_sj_nest => <Table_ref *> {object['emb_sj_nest']}
+                                       embedding_map => <nested_join_map> {object['embedding_map']}
+                                       join_cache_flags => <uint> {object['join_cache_flags']}
+                                       reversed_access => <bool> {object['reversed_access']}
+                              }}
+                              ''')
+    g_list_object_string.append(display)
+
+    traverse_QEP_shared(g_list_QEP_shared, object['m_qs'])
+    add_line(g_list_line, f'JOIN_TAB_{object.address}::m_qs --> QEP_shared_', object['m_qs'], 'm_qs')
+
+# 探索 QEP_TAB
+# @list 存储 QEP_TAB 指针的列表
+# @object QEP_TAB 的指针或者对象
+@object_decorator
+def traverse_QEP_TAB(list, object):
+    display = textwrap.dedent(f'''
+                              map QEP_TAB_{object.address} #header:pink;back:lightgreen{{
+                                       m_qs => <QEP_shared *> {object['m_qs']}
+                                       table_ref => <Table_ref *> {object['table_ref']}
+                                       flush_weedout_table => <SJ_TMP_TABLE *> {object['flush_weedout_table']}
+                                       check_weed_out_table => <SJ_TMP_TABLE *> {object['check_weed_out_table']}
+                                       firstmatch_return => <plan_idx> {object['firstmatch_return']}
+                                       loosescan_key_len => <uint> {object['loosescan_key_len']}
+                                       match_tab => <plan_idx> {object['match_tab']}
+                                       rematerialize => <bool> {object['rematerialize']}
+                                       materialize_table => <QEP_TAB::Setup_func> {object['materialize_table']}
+                                       using_dynamic_range => <bool> {object['using_dynamic_range']}
+                                       needs_duplicate_removal => <bool> {object['needs_duplicate_removal']}
+                                       not_used_in_distinct => <bool> {object['not_used_in_distinct']}
+                                       having => <Item *> {object['having']}
+                                       op_type => <QEP_TAB::enum_op_type> {object['op_type']}
+                                       tmp_table_param => <Temp_table_param *> {object['tmp_table_param']}
+                                       filesort => <Filesort *> {object['filesort']}
+                                       filesort_pushed_order => <ORDER *> {object['filesort_pushed_order']}
+                                       ref_item_slice => <uint> {object['ref_item_slice']}
+                                       m_condition_optim => <Item *> {object['m_condition_optim']}
+                                       m_keyread_optim => <bool> {object['m_keyread_optim']}
+                                       m_reversed_access => <bool> {object['m_reversed_access']}
+                                       lateral_derived_tables_depend_on_me => <qep_tab_map> {object['lateral_derived_tables_depend_on_me']}
+                                       invalidators => <Mem_root_array<AccessPath const*> *> {object['invalidators']}
+                              }}
+                              ''')
+    g_list_object_string.append(display)
+
+    traverse_QEP_shared(g_list_QEP_shared, object['m_qs'])
+    add_line(g_list_line, f'QEP_TAB_{object.address}::m_qs --> QEP_shared_', object['m_qs'], 'm_qs')
+
+# 探索 COND_EQUAL
+# @list 存储 COND_EQUAL 指针的列表
+# @object COND_EQUAL 的指针或者对象
+@object_decorator
+def traverse_COND_EQUAL(list, object):
+    display = textwrap.dedent(f'''
+                              map COND_EQUAL_{object.address} #header:pink;back:lightgreen{{
+                                       max_members => <uint> {object['max_members']}
+                                       upper_levels => <COND_EQUAL *> {object['upper_levels']}
+                                       current_level => <List<Item_equal>> {object['current_level']}
+                              }}
+                              ''')
+    g_list_object_string.append(display)
 
 def display_list__natural_join_column__list(list):
     if list.type.code == gdb.TYPE_CODE_PTR:
@@ -970,6 +1063,9 @@ class GDB_expr(gdb.Command):
         del g_list_Item[:]
         del g_list_SQL_I_List__object[:]
         del g_list_JOIN[:]
+        del g_list_JOIN_TAB[:]
+        del g_list_QEP_TAB[:]
+        del g_list_QEP_shared[:]
         del g_list_line[:]
         del g_list_object_string[:]
         del g_list_note[:]
@@ -1136,8 +1232,8 @@ class GDB_object(gdb.Command):
     def invoke(self, arg, from_tty):        
         class_type = gdb.lookup_type(arg)
         fields = class_type.fields()
-        print(f'map {arg}_{{object.address}} #header:pink;back:lightgreen{{')
+        print(f'                              map {arg}_{{object.address}} #header:pink;back:lightgreen{{{{')
         for field in fields:
-            print(f'         {field.name} => <{field.type}> {{object[{field.name}]}}')
-        print('}')
+            print(f'                                       {field.name} => <{field.type}> {{object[\'{field.name}\']}}')
+        print('                              }}')
 GDB_object()
